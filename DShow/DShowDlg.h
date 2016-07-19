@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include "afxwin.h"
 
 
 // CDShowDlg 对话框
@@ -25,7 +26,23 @@ protected:
 
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
+	virtual void OnCancel();
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
+private:
+	BOOL _InitCapGraphBuider();
+	BOOL _EnumDevices(CComboBox& pCombox);
+private:
+	IGraphBuilder* m_pGraphBuider;
+	IMediaControl* m_pMediaCtl;
+	IMediaEvent*	m_pEvent;
+	ICaptureGraphBuilder2 *m_pCapGraph;
+	IMoniker * m_pMoniker;
+
+	CComboBox m_pCBVideoDev;			//视频设备列表框
+
+	
+public:
+	afx_msg void OnCbnSelchangeCbvideodev();
 };

@@ -25,11 +25,13 @@ CDShowDlg::CDShowDlg(CWnd* pParent /*=NULL*/)
 void CDShowDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_CBVIDEODEV, m_pCBVideoDev);
 }
 
 BEGIN_MESSAGE_MAP(CDShowDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_CBN_SELCHANGE(IDC_CBVIDEODEV, &CDShowDlg::OnCbnSelchangeCbvideodev)
 END_MESSAGE_MAP()
 
 
@@ -44,8 +46,17 @@ BOOL CDShowDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);			// 设置大图标
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
-	// TODO:  在此添加额外的初始化代码
+	// TODO:  初始化操作
 
+	//初始化采集filter
+	_InitCapGraphBuider();
+	_EnumDevices(m_pCBVideoDev);
+
+
+
+
+
+	
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -53,6 +64,14 @@ BOOL CDShowDlg::OnInitDialog()
 //  来绘制该图标。  对于使用文档/视图模型的 MFC 应用程序，
 //  这将由框架自动完成。
 
+void CDShowDlg::OnCancel()
+{
+
+	m_pGraphBuider->Release();
+	m_pCapGraph->Release();
+	CoUninitialize();
+
+}
 void CDShowDlg::OnPaint()
 {
 	if (IsIconic())
@@ -85,3 +104,90 @@ HCURSOR CDShowDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
+BOOL CDShowDlg::_InitCapGraphBuider()
+{
+	HRESULT hr = CoInitialize(NULL);
+	HRCHECK(hr)
+
+	hr = CoCreateInstance(CLSID_CaptureGraphBuilder2, NULL,
+		CLSCTX_INPROC_SERVER, IID_ICaptureGraphBuilder2, (void**)&m_pCapGraph);
+	HRCHECK(hr)
+
+	hr = CoCreateInstance(CLSID_FilterGraph,
+		NULL,
+		CLSCTX_INPROC_SERVER,
+		IID_IGraphBuilder,
+		(void**)&m_pGraphBuider);
+	HRCHECK(hr)
+
+	m_pCapGraph->SetFiltergraph(m_pGraphBuider);
+	
+	return TRUE;
+}
+
+BOOL CDShowDlg::_EnumDevices(CComboBox& pCombox)
+{
+	ICreateDevEnum* pDevEnum = NULL;			//
+	IEnumMoniker*	pEnum = NULL;			//枚举器监控接口指针
+
+	//创建系统设备枚举器
+	HRESULT hr = CoCreateInstance(CLSID_SystemDeviceEnum, NULL, CLSCTX_INPROC_SERVER,
+		IID_ICreateDevEnum, (void**)&pDevEnum);
+	HRCHECK(hr)
+
+	//创建一个枚举视频设备的枚举器
+	hr = pDevEnum->CreateClassEnumerator(CLSID_VideoInputDeviceCategory, &pEnum, NULL);
+	HRCHECK(hr)
+
+	while (pEnum->Next(1, &m_pMoniker, NULL) == S_OK)
+	{
+		IPropertyBag* pPropery = NULL;
+		hr = m_pMoniker->BindToStorage(0, 0, IID_IPropertyBag, (void**)&pPropery);
+		if (FAILED(hr))
+		{
+			m_pMoniker->Release();
+			continue;
+		}
+
+		VARIANT varName;
+		VariantInit(&varName);
+		hr = pPropery->Read(L"Description", &varName, NULL);
+		if (FAILED(hr))
+		{
+			hr = pPropery->Read(L"FriendlyName", &varName, NULL);
+		}
+
+		if (SUCCEEDED(hr))
+		{
+			pCombox.AddString(varName.bstrVal);
+			VariantClear(&varName);
+		}
+		
+		pPropery->Release();
+		m_pMoniker->Release();
+
+	}
+	pCombox.SetCurSel(0);
+
+	IBaseFilter* pBaseFilter;
+	hr = m_pMoniker->BindToObject(0, 0, IID_IBaseFilter, (void**)&pBaseFilter);
+	if (SUCCEEDED(hr))
+	{
+		hr = m_pGraphBuider->AddFilter(pBaseFilter, L"Capture Filter");
+	}
+
+
+
+	pEnum->Release();
+	pDevEnum->Release();
+
+
+	return TRUE;
+
+}
+
+void CDShowDlg::OnCbnSelchangeCbvideodev()
+{
+	IBaseFilter* pBaseFilter = NULL;
+	
+}

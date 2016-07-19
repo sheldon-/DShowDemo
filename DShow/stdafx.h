@@ -33,11 +33,14 @@
 
 #include <afxcontrolbars.h>     // 功能区和控件条的 MFC 支持
 
+#include <dshow.h>
+#include <streams.h>
+#pragma comment(lib,"strmiids.lib")
+//#pragma comment(lib,"quartz.lib")
+#pragma comment(lib,"strmbasd.lib")
 
 
-
-
-
+#define HRCHECK(hr)  {if(FAILED(hr)){return FALSE;}}
 
 
 
